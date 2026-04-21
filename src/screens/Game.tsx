@@ -10,6 +10,7 @@ import CharacterGuessModal from '../components/CharacterGuessModal';
 import { useSoundEffects } from '../sounds/useSoundEffects';
 import { sfx } from '../sounds/sfx';
 import moedaImg from '../assets/moeda.svg';
+import caraImg from '../assets/cara.svg';
 import mesaImg  from '../assets/mesa.svg';
 import styles from './Game.module.css';
 import { X, LogOut, RotateCcw, Info } from 'lucide-react';
@@ -96,11 +97,11 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
   const isMyTurn = currentPlayerId === myId;
   const myCoins  = me?.coins ?? 0;
 
-  function emit(event: string, payload: any, cb?: () => void) {
+  function emit(event: string, payload: any, cb?: (res?: any) => void) {
     setError('');
     socket.emit(event, payload ?? {}, (res: any) => {
       if (res && !res.success) setError(res.error || 'Erro desconhecido');
-      cb?.();
+      cb?.(res);
     });
   }
 
@@ -114,13 +115,22 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
 
   const handleRestart = () => {
     if (confirm('Deseja reiniciar a partida? Todo o progresso atual será perdido.')) {
-      emit('restart_game', {});
+      emit('restart_game', {}, (res: any) => {
+        if (res && !res.success) {
+          alert('Erro ao reiniciar: ' + (res.error || 'Erro desconhecido'));
+        }
+      });
     }
   };
 
   const stageAction = (action: string, charKey: string | null) => {
-    if (TARGET_ACTIONS.includes(action) && !selectedTarget)
-      return setError('Selecione um oponente como alvo primeiro ⬆');
+    if (TARGET_ACTIONS.includes(action)) {
+      if (!selectedTarget) {
+        setPendingConfirm({ action, charKey, targetId: null });
+        setError('Escolha um alvo clicando em um jogador acima ⬆');
+        return;
+      }
+    }
     
     if (action === 'veredito') {
       setIsGuessing(true);
@@ -129,6 +139,7 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
     
     sfx.cardFlip();
     setPendingConfirm({ action, charKey, targetId: selectedTarget });
+    setError('');
   };
 
   const handleGuess = (char: string) => {
@@ -154,6 +165,7 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
 
   const cancelConfirm = () => {
     setPendingConfirm(null);
+    setSelectedTarget(null);
     setError('');
   };
 
@@ -165,6 +177,7 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
 
   const canAct            = isMyTurn && phase === 'ACTION_SELECT' && me?.alive;
   const canRespond        = phase === 'RESPONSE_WINDOW' && !iAmActor && !alreadyResponded && me?.alive;
+  const mustGamble        = phase === 'GAMBLE_WAIT' && pa?.blocker?.playerId === myId;
   const isTargetedAction  = TARGET_ACTIONS.includes(pa?.type);
   const canChallengeAct   = canRespond && !!pa?.claimedCharacter;
   const canBlockAct       = canRespond && (pa?.type === 'ajuda_externa' ? true : iAmTarget);
@@ -185,23 +198,60 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
   if (winner) {
     const w = players.find((p: any) => p.id === winner);
     return (
-      <motion.div className={styles.gameOver} initial={{ opacity:0 }} animate={{ opacity:1 }}>
-        <motion.div className={styles.gameOverCard}
-          initial={{ scale:0.7, y:40 }} animate={{ scale:1, y:0 }}
-          transition={{ type:'spring', stiffness:200, damping:18 }}>
-          <h1>FIM DE JOGO</h1>
-          <p className={styles.winnerName}>{w?.name} venceu o Golpe! 🇧🇷</p>
-          <div className="flex flex-col gap-2 w-full">
-            <motion.button className="btn-primary" whileTap={{ scale:0.95 }}
-              onClick={() => socket.emit('restart_game', {})}>
-              Jogar Novamente
-            </motion.button>
-            <button className="text-white/40 text-xs hover:text-white transition-colors" onClick={onQuit}>
-               Sair para o Menu
-            </button>
+      <div className={styles.board}>
+        <div className={styles.leftPanel}>
+          <TurnCard player={players.find((p: any)=>p.id===currentPlayerId)} isMe={isMyTurn} />
+          <p className={styles.panelLabel}>Chat da Rodada</p>
+          <GameLog log={log} />
+        </div>
+
+        <div className={styles.center}>
+           <div className={styles.mesaWrapper}>
+             <motion.div className={styles.gameOverOverlay} initial={{ opacity:0 }} animate={{ opacity:1 }}>
+                <motion.div className={styles.gameOverCard}
+                  initial={{ scale:0.7, y:40 }} animate={{ scale:1, y:0 }}
+                  transition={{ type:'spring', stiffness:200, damping:18 }}>
+                  <h1 className="text-4xl font-black mb-2 text-yellow-500 tracking-tighter">VITÓRIA! 🇧🇷</h1>
+                  <p className={styles.winnerName}>{w?.name} é o novo dono do Brasil!</p>
+                  
+                  <div className="flex flex-col gap-3 w-full mt-6">
+                    <motion.button className="bg-yellow-500 text-black py-4 rounded-xl font-bold text-lg shadow-[0_10px_20px_-10px_rgba(255,214,0,0.5)]" 
+                      whileTap={{ scale:0.95 }}
+                      onClick={() => socket.emit('restart_game', {})}>
+                      REINICIAR PARTIDA
+                    </motion.button>
+                    <button className="text-white/40 text-sm hover:text-white transition-colors" onClick={onQuit}>
+                       SAIR PARA O LOBBY
+                    </button>
+                  </div>
+                </motion.div>
+             </motion.div>
+             <img src={mesaImg} className={styles.mesaImg} alt="mesa" />
+           </div>
+        </div>
+
+        <div className={styles.rightPanel}>
+          <div className="p-4 border-b border-white/5 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">RESUMO FINAL</span>
           </div>
-        </motion.div>
-      </motion.div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+             {players.map((p: any) => (
+                <div key={p.id} className={`flex items-center gap-3 p-3 rounded-lg bg-white/5 ${p.id===winner?'ring-1 ring-yellow-500/50':''}`}>
+                   <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center font-bold">
+                      {p.name.charAt(0)}
+                   </div>
+                   <div className="flex-1">
+                      <p className="text-sm font-bold">{p.name}</p>
+                      <p className={`text-[10px] uppercase font-black ${p.alive?'text-emerald-500':'text-red-500'}`}>
+                        {p.alive ? 'SOBREVIVENTE' : 'ELIMINADO'}
+                      </p>
+                   </div>
+                   {p.id === winner && <span className="text-2xl">🏆</span>}
+                </div>
+             ))}
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -299,9 +349,19 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
               <motion.div key="resp" className={styles.mesaStatus}
                 initial={{opacity:0,y:-6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
                 {phase === 'GAMBLE_WAIT' ? (
-                  <span className={styles.mesaStatusMain} style={{color:'var(--yellow)'}}>
-                    🪙 {pa.blocker?.playerId === myId ? 'Sua vez de lançar a moeda!' : `Esperando ${players.find((p:any)=>p.id===pa.blocker?.playerId)?.name} lançar a moeda...`}
-                  </span>
+                  <div className="flex flex-col items-center gap-4">
+                    <span className={styles.mesaStatusMain} style={{color:'var(--yellow)'}}>
+                      🪙 {pa.blocker?.playerId === myId ? 'Sua vez de lançar a moeda!' : `Esperando ${players.find((p:any)=>p.id===pa.blocker?.playerId)?.name} lançar a moeda...`}
+                    </span>
+                    {pa.blocker?.playerId === myId && (
+                      <motion.button 
+                        className="bg-yellow-500 text-black px-8 py-4 rounded-full font-black text-xl shadow-[0_0_30px_rgba(255,214,0,0.4)] uppercase tracking-tighter"
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        onClick={() => emit('toss_coin', {})}>
+                        🎲 LANÇAR AGORA!
+                      </motion.button>
+                    )}
+                  </div>
                 ) : phase === 'GAMBLE_FLIPPING' ? (
                   <div className={styles.coinAnimation}>
                      <motion.div
@@ -313,14 +373,16 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
                        transition={{ duration: 3, ease: "easeInOut" }}>
                        <img src={moedaImg} className={styles.flippingCoin} alt="coin" />
                      </motion.div>
-                     <motion.span 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 3 }}
-                        className={styles.mesaStatusMain}
-                        style={{ color: 'var(--yellow)', fontSize: '2rem' }}>
-                        {pa.gambleResult === 'heads' ? '🎲 CARA!' : '🎰 COROA!'}
-                     </motion.span>
+                     <motion.div 
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 3, type: 'spring' }}
+                        className={styles.coinResult}>
+                        <img src={pa.gambleResult === 'heads' ? caraImg : moedaImg} className={styles.coinSideLarge} alt="result" />
+                        <span className={styles.mesaStatusMain} style={{ color: 'var(--yellow)', fontSize: '2rem' }}>
+                           {pa.gambleResult === 'heads' ? '🎲 CARA!' : '🎰 COROA!'}
+                        </span>
+                     </motion.div>
                   </div>
                 ) : (
                   <>
@@ -395,7 +457,7 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
             </>
           )}
 
-          {canRespond&&(
+          {(canRespond || mustGamble) && (
             <motion.div className={styles.responseBox}
               initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}>
               {pa?.type === 'veredito' && pa?.guessedCharacter ? (
@@ -416,9 +478,6 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
               )}
               {canChallengeAct&&(
                 <Btn icon="⚔️" label="DUVIDAR" sub="chamar o VAR!" danger onClick={()=>{sfx.challenge();emit('challenge',{});}} />
-              )}
-              {phase === 'GAMBLE_WAIT' && pa.blocker?.playerId === myId && (
-                <Btn icon="🪙" label="LANÇAR MOEDA" sub="Cara ou Coroa?" success onClick={()=>emit('toss_coin', {})} />
               )}
               {canBlockAct&&blockOptions.map((char: string)=>(
                 <Btn key={char} icon={CHAR_CONFIG[char]?.icon} label={`Bloquear como ${CHAR_CONFIG[char]?.label}`} sub="clique para selecionar" selected={blockChar===char} onClick={()=>setBlockChar(p=>p===char?null:char)} />

@@ -69,7 +69,7 @@
 }
 
 .mesaStatus {
-  @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[120%] flex flex-col items-center gap-1 text-center pointer-events-none z-10;
+  @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[120%] flex flex-col items-center gap-1 text-center z-10;
 }
 
 .mesaStatusMain {
@@ -212,6 +212,18 @@
 .actionBtnSuccess { @apply border-green-500/30 bg-green-500/10; }
 
 .errorMsg { @apply text-[10px] text-red-500 font-bold bg-red-500/10 p-2 rounded border border-red-500/20; }
+
+.gameOverOverlay {
+  @apply absolute inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-6;
+}
+
+.gameOverCard {
+  @apply bg-neutral-900 border border-yellow-500/30 p-8 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] max-w-sm w-full text-center flex flex-col items-center;
+}
+
+.winnerName {
+  @apply text-white/60 text-sm mb-4;
+}
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }

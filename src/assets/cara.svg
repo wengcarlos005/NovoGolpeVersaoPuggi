@@ -1,0 +1,8 @@
+<svg width="197" height="199" viewBox="0 0 197 199" fill="none" xmlns="http://www.w3.org/2000/svg">
+<circle cx="98.5" cy="99.5" r="95" fill="#B67C01" stroke="#CC961C" stroke-width="4"/>
+<circle cx="98.5" cy="99.5" r="75" fill="#91978F" stroke="#B67C01" stroke-width="2"/>
+<text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="rgba(0,0,0,0.3)">CARA</text>
+<path d="M98.5 45L110 75H87L98.5 45Z" fill="#CC961C"/>
+<path d="M98.5 154L87 124H110L98.5 154Z" fill="#CC961C"/>
+<circle cx="98.5" cy="99.5" r="50" stroke="rgba(204, 150, 28, 0.2)" stroke-width="8" stroke-dasharray="20,10"/>
+</svg>

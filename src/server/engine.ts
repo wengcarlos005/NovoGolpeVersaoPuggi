@@ -156,8 +156,9 @@ function resolveActionEffect(game: GameState) {
         log(game, FUNNY.veredito_win(actor.name, target.name));
         target.cards[cardIdx].dead = true;
         log(game, FUNNY.lose_influence(target.name, CHARACTER_NAMES[guess]));
-        
         if (checkGameOver(game)) return;
+        advanceTurn(game);
+        return;
       } else {
         log(game, FUNNY.veredito_lose(actor.name));
       }

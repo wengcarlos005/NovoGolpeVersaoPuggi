@@ -388,10 +388,23 @@ async function startServer() {
         cb?.({ success: true });
       });
 
-      socket.on('restart_game', withRoom((room: Room, _: any, pid: string) => {
-        const caller = room.players.find(p => p.id === pid || p.currentSocketId === pid);
-        if (!caller || room.hostId !== caller.id) return { success: false, error: 'Só o host pode reiniciar' };
+      socket.on('restart_game', (_: any, cb: any) => {
+        console.log('RESTART REQUEST from', socket.id);
+        const room = getRoomByPlayer(socket.id);
+        if (!room) {
+          console.log('Restart failed: Room not found for', socket.id);
+          return cb?.({ success: false, error: 'Sala não encontrada' });
+        }
         
+        const caller = room.players.find(p => p.id === socket.id || p.currentSocketId === socket.id);
+        console.log('Restart request by', caller?.name, 'Room Host ID:', room.hostId, 'Caller ID:', caller?.id);
+
+        if (!caller || room.hostId !== caller.id) {
+          console.log('Restart failed: Not host');
+          return cb?.({ success: false, error: 'Só o host pode reiniciar' });
+        }
+        
+        console.log('Restarting game in room', room.code);
         const slots = Math.max(0, 6 - room.players.length);
         const promoted = (room.spectators || []).splice(0, slots);
         promoted.forEach(s => room.players.push({
@@ -402,8 +415,9 @@ async function startServer() {
           cards: []
         }));
         startGameInRoom(room);
-        return { success: true };
-      }));
+        broadcast(room);
+        cb?.({ success: true });
+      });
 
       socket.on('take_action',       withRoom((room: Room, { action, targetId, guessedChar }: any, pid: string) => handleAction(room, pid, action, targetId, guessedChar)));
       socket.on('toss_coin',         withRoom((room: Room, _: any, pid: string) => {
