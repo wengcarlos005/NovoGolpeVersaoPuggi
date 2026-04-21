@@ -13,6 +13,7 @@ import {
 import {
   handleAction, handlePass, handleBlock, handleChallenge,
   handleLoseInfluence, handleSelectCardShow, handleAcknowledgePeek, handleSelectCardSwap,
+  handleTossCoin, resolveGambleFinal,
 } from './src/server/engine.ts';
 import { Room, GameState, PendingAction } from './src/server/types.ts';
 
@@ -81,6 +82,7 @@ async function startServer() {
       claimedCharacter: pa.claimedCharacter, blocker: pa.blocker,
       respondedPlayers: pa.respondedPlayers, loseInfluenceQueue: pa.loseInfluenceQueue,
       swapPlayerId: pa.swapPlayerId, swapContext: pa.swapContext,
+      guessedCharacter: pa.guessedCharacter, gambleResult: pa.gambleResult,
     };
     if (pa.x9Result && pa.actorId === playerId) base.x9Result = pa.x9Result;
     return base;
@@ -386,18 +388,34 @@ async function startServer() {
         cb?.({ success: true });
       });
 
-      socket.on('restart_game', (_: any, cb: any) => {
-        const room = getRoomByPlayer(socket.id);
-        if (!room) return cb?.({ success: false });
+      socket.on('restart_game', withRoom((room: Room, _: any, pid: string) => {
+        const caller = room.players.find(p => p.id === pid || p.currentSocketId === pid);
+        if (!caller || room.hostId !== caller.id) return { success: false, error: 'Só o host pode reiniciar' };
+        
         const slots = Math.max(0, 6 - room.players.length);
         const promoted = (room.spectators || []).splice(0, slots);
-        promoted.forEach(s => room.players.push({ id: s.id, name: s.name, currentSocketId: s.currentSocketId || s.id, coins: 0, cards: [] }));
+        promoted.forEach(s => room.players.push({
+          id: s.id,
+          name: s.name,
+          currentSocketId: s.currentSocketId || s.id,
+          coins: 0,
+          cards: []
+        }));
         startGameInRoom(room);
-        broadcast(room);
-        cb?.({ success: true });
-      });
+        return { success: true };
+      }));
 
-      socket.on('take_action',       withRoom((room: Room, { action, targetId }: any, pid: string) => handleAction(room, pid, action, targetId)));
+      socket.on('take_action',       withRoom((room: Room, { action, targetId, guessedChar }: any, pid: string) => handleAction(room, pid, action, targetId, guessedChar)));
+      socket.on('toss_coin',         withRoom((room: Room, _: any, pid: string) => {
+        const res = handleTossCoin(room, pid);
+        if (res.success) {
+          setTimeout(() => {
+            resolveGambleFinal(room);
+            broadcast(room);
+          }, 5000);
+        }
+        return res;
+      }));
       socket.on('challenge',         withRoom((room: Room, _: any, pid: string) => handleChallenge(room, pid)));
       socket.on('block',             withRoom((room: Room, { character }: any, pid: string) => handleBlock(room, pid, character)));
       socket.on('pass',              withRoom((room: Room, _: any, pid: string) => handlePass(room, pid)));

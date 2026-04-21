@@ -6,6 +6,7 @@ import { CHAR_CONFIG } from '../components/charConfig';
 import GameLog from '../components/GameLog';
 import TurnCard from '../components/TurnCard';
 import CardSelectorModal from '../components/CardSelectorModal';
+import CharacterGuessModal from '../components/CharacterGuessModal';
 import { useSoundEffects } from '../sounds/useSoundEffects';
 import { sfx } from '../sounds/sfx';
 import moedaImg from '../assets/moeda.svg';
@@ -17,9 +18,10 @@ const ACTION_NAMES: Record<string, string> = {
   renda:'Trampo Suado', ajuda_externa:'Imposto é Roubo', golpe:'Golpe de Estado',
   taxar:'Faz o L', roubar:'Pegar o Arrego', assassinar:'Mandar pro Vasco',
   meter_x9:'Meter o X9', disfarce:'Disfarce', trocar_carta:'Troca de Cartas',
+  veredito: 'Veredito',
 };
 
-const TARGET_ACTIONS = ['golpe','roubar','assassinar','meter_x9','trocar_carta'];
+const TARGET_ACTIONS = ['golpe','roubar','assassinar','meter_x9','trocar_carta', 'veredito'];
 
 const BLOCK_OPTIONS: Record<string, string[]> = {
   ajuda_externa:['politico'], roubar:['juiz','guarda_costas'],
@@ -30,6 +32,7 @@ const ACTION_TO_CHAR: Record<string, string> = {
   taxar:'politico', roubar:'empresario',
   assassinar:'assassino',
   meter_x9:'investigador', disfarce:'investigador', trocar_carta:'investigador',
+  veredito: 'juiz',
 };
 
 const ACTION_CATEGORIES = [
@@ -60,6 +63,7 @@ const ACTION_CATEGORIES = [
       { action:'assassinar',   icon:'🔫', label:'Mandar pro Vasco', sub:'Elimina · Bandido · 3💰', tooltip:'Gasta 3 moedas e elimina carta do alvo.' },
       { action:'meter_x9',     icon:'🕵️', label:'Meter o X9',       sub:'Espia · X9',              tooltip:'Vê uma carta secreta do alvo.' },
       { action:'trocar_carta', icon:'🔄', label:'Troca de Cartas',   sub:'Força troca · X9',        tooltip:'Força o alvo a trocar uma carta pelo baralho.' },
+      { action:'veredito',     icon:'⚖️', label:'Veredito',        sub:'Adivinha · Juiz · 6💰',   tooltip:'Se acertar a carta do alvo, ele a perde! Custa 6 moedas.' },
     ],
   },
 ];
@@ -70,6 +74,8 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
   const [blockChar,      setBlockChar]      = useState<string | null>(null);
   const [error,          setError]          = useState('');
   const [showHelp,       setShowHelp]       = useState(false);
+  const [guessChar,      setGuessChar]      = useState<string | null>(null);
+  const [isGuessing,     setIsGuessing]     = useState(false);
 
   const game = data?.game;
   const { players = [], currentPlayerId, phase, pendingAction: pa, log = [], winner } = game || {};
@@ -115,16 +121,34 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
   const stageAction = (action: string, charKey: string | null) => {
     if (TARGET_ACTIONS.includes(action) && !selectedTarget)
       return setError('Selecione um oponente como alvo primeiro ⬆');
+    
+    if (action === 'veredito') {
+      setIsGuessing(true);
+      return;
+    }
+    
     sfx.cardFlip();
     setPendingConfirm({ action, charKey, targetId: selectedTarget });
+  };
+
+  const handleGuess = (char: string) => {
+    setIsGuessing(false);
+    setGuessChar(char);
+    sfx.cardFlip();
+    setPendingConfirm({ action: 'veredito', charKey: 'juiz', targetId: selectedTarget });
   };
 
   const confirmAction = () => {
     if (!pendingConfirm) return;
     sfx.action();
-    emit('take_action', { action: pendingConfirm.action, targetId: pendingConfirm.targetId }, () => {
+    emit('take_action', { 
+      action: pendingConfirm.action, 
+      targetId: pendingConfirm.targetId,
+      guessedChar: guessChar 
+    }, () => {
       setSelectedTarget(null);
       setPendingConfirm(null);
+      setGuessChar(null);
     });
   };
 
@@ -142,7 +166,7 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
   const canAct            = isMyTurn && phase === 'ACTION_SELECT' && me?.alive;
   const canRespond        = phase === 'RESPONSE_WINDOW' && !iAmActor && !alreadyResponded && me?.alive;
   const isTargetedAction  = TARGET_ACTIONS.includes(pa?.type);
-  const canChallengeAct   = canRespond && !!pa?.claimedCharacter && (!isTargetedAction || iAmTarget);
+  const canChallengeAct   = canRespond && !!pa?.claimedCharacter;
   const canBlockAct       = canRespond && (pa?.type === 'ajuda_externa' ? true : iAmTarget);
   const canChallengeBlock = phase === 'BLOCK_CHALLENGE_WINDOW' && iAmActor;
 
@@ -183,6 +207,12 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
 
   return (
     <div className={styles.board}>
+      {isGuessing && (
+        <CharacterGuessModal 
+          onConfirm={handleGuess}
+          onCancel={() => setIsGuessing(false)}
+        />
+      )}
       {mustLoseInfluence && (
         <CardSelectorModal context="lose" title="Perdeu, mané 💀"
           description="Você deve perder uma carta. Escolha qual revelar para a mesa."
@@ -265,11 +295,39 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
                 }
               </motion.div>
             )}
-            {(phase==='RESPONSE_WINDOW'||phase==='BLOCK_CHALLENGE_WINDOW')&&pa&&(
+            {(phase==='RESPONSE_WINDOW'||phase==='BLOCK_CHALLENGE_WINDOW' || phase === 'GAMBLE_WAIT' || phase === 'GAMBLE_FLIPPING')&&pa&&(
               <motion.div key="resp" className={styles.mesaStatus}
                 initial={{opacity:0,y:-6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-                <span className={styles.mesaStatusIcon}>{pa.claimedCharacter?CHAR_CONFIG[pa.claimedCharacter]?.icon:'⚡'}</span>
-                <span className={styles.mesaStatusMain}>{ACTION_NAMES[pa.type]}</span>
+                {phase === 'GAMBLE_WAIT' ? (
+                  <span className={styles.mesaStatusMain} style={{color:'var(--yellow)'}}>
+                    🪙 {pa.blocker?.playerId === myId ? 'Sua vez de lançar a moeda!' : `Esperando ${players.find((p:any)=>p.id===pa.blocker?.playerId)?.name} lançar a moeda...`}
+                  </span>
+                ) : phase === 'GAMBLE_FLIPPING' ? (
+                  <div className={styles.coinAnimation}>
+                     <motion.div
+                       animate={{ 
+                         rotateY: [0, 1800],
+                         scale: [1, 1.2, 1],
+                         y: [0, -40, 0]
+                       }} 
+                       transition={{ duration: 3, ease: "easeInOut" }}>
+                       <img src={moedaImg} className={styles.flippingCoin} alt="coin" />
+                     </motion.div>
+                     <motion.span 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 3 }}
+                        className={styles.mesaStatusMain}
+                        style={{ color: 'var(--yellow)', fontSize: '2rem' }}>
+                        {pa.gambleResult === 'heads' ? '🎲 CARA!' : '🎰 COROA!'}
+                     </motion.span>
+                  </div>
+                ) : (
+                  <>
+                    <span className={styles.mesaStatusIcon}>{pa.claimedCharacter?CHAR_CONFIG[pa.claimedCharacter]?.icon:'⚡'}</span>
+                    <span className={styles.mesaStatusMain}>{ACTION_NAMES[pa.type]}</span>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -325,7 +383,10 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
                   <div key={cat.id} className={styles.catSection} style={{'--cat-bg':cat.bg} as React.CSSProperties}>
                     <span className={styles.catLabel} style={{color:cat.labelColor}}>{cat.label}</span>
                     {cat.actions.map(({action,icon,label,sub,tooltip})=>{
-                      const isDisabled = (action!=='golpe'&&mustGolpe) || (action==='golpe'&&myCoins<7) || (action==='assassinar'&&myCoins<3);
+                      const isDisabled = (action!=='golpe'&&mustGolpe) || 
+                                       (action==='golpe'&&myCoins<7) || 
+                                       (action==='assassinar'&&myCoins<3) ||
+                                       (action==='veredito'&&myCoins<6);
                       return <Btn key={action} icon={icon} label={label} sub={sub} tooltip={tooltip} disabled={isDisabled} onClick={()=>stageAction(action, ACTION_TO_CHAR[action]??null)} />;
                     })}
                   </div>
@@ -334,14 +395,30 @@ export default function Game({ data, myId, onQuit }: { data: any, myId: string, 
             </>
           )}
 
-          {(canChallengeAct||canBlockAct)&&(
+          {canRespond&&(
             <motion.div className={styles.responseBox}
               initial={{opacity:0,y:6}} animate={{opacity:1,y:0}}>
-              <p className={styles.responseTitle}>
-                <strong>{actorName}</strong> declara <strong>{ACTION_NAMES[pa?.type]}</strong>
-              </p>
+              {pa?.type === 'veredito' && pa?.guessedCharacter ? (
+                <div className={styles.accAnnouncement}>
+                  <div className={styles.accIcon}>⚖️</div>
+                  <div className={styles.accContent}>
+                    <p className={styles.accTitle}>Veredito do Juiz</p>
+                    <p className={styles.accText}>
+                      <strong>{actorName}</strong> condenou <strong>{targetName}</strong>! <br/>
+                      Dizendo que ele possui um <strong>{CHAR_CONFIG[pa.guessedCharacter]?.label}</strong>
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className={styles.responseTitle}>
+                  <strong>{actorName}</strong> declara <strong>{ACTION_NAMES[pa?.type]}</strong>
+                </p>
+              )}
               {canChallengeAct&&(
                 <Btn icon="⚔️" label="DUVIDAR" sub="chamar o VAR!" danger onClick={()=>{sfx.challenge();emit('challenge',{});}} />
+              )}
+              {phase === 'GAMBLE_WAIT' && pa.blocker?.playerId === myId && (
+                <Btn icon="🪙" label="LANÇAR MOEDA" sub="Cara ou Coroa?" success onClick={()=>emit('toss_coin', {})} />
               )}
               {canBlockAct&&blockOptions.map((char: string)=>(
                 <Btn key={char} icon={CHAR_CONFIG[char]?.icon} label={`Bloquear como ${CHAR_CONFIG[char]?.label}`} sub="clique para selecionar" selected={blockChar===char} onClick={()=>setBlockChar(p=>p===char?null:char)} />

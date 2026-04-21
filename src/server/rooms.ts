@@ -45,7 +45,7 @@ export function startGameInRoom(room: Room) {
     id: p.id,
     name: p.name,
     currentSocketId: p.currentSocketId,
-    coins: 1,
+    coins: 2,
     cards: [
       { character: deck.pop()!, dead: false },
       { character: deck.pop()!, dead: false },

@@ -24,6 +24,11 @@ const FUNNY: Record<string, Function> = {
   game_start:     ()       => `🇧🇷 PARTIDA INICIADA! Que vença o mais safado. Boa sorte pra ninguém.`,
   x9_show:        (t: string)      => `${t} selecionou uma carta para mostrar. O X9 vai ver... 🕵️`,
   x9_swap_done:   (p: string)      => `${p} trocou uma carta. Será que melhorou? 🎴`,
+  veredito:       (a: string, t: string, g: string) => `${a} deu o Veredito em ${t}: "Você tem um ${g}!" ⚖️`,
+  veredito_win:   (a: string, t: string) => `O Juiz acertou! ${t} foi condenado e perdeu a carta. 🔨`,
+  veredito_lose:  (a: string) => `O Juiz errou feio! Perdeu as moedas e a moral. 💸`,
+  bicheiro_heads: (b: string) => `Deu CARA! ${b} bloqueou com sucesso e o Bicheiro devolveu a moeda. 🪙`,
+  bicheiro_tails: (b: string) => `Deu COROA! O Bicheiro cancelou o bloqueio e embolsou a moeda. 🎰`,
 };
 
 function log(game: GameState, msg: string) {
@@ -91,16 +96,19 @@ function resolveActionEffect(game: GameState) {
     case 'renda':
       actor.coins += 1;
       log(game, FUNNY.renda(actor.name));
+      log(game, `💰 ${actor.name} agora tem ${actor.coins} moedas.`);
       break;
 
     case 'ajuda_externa':
       actor.coins += 2;
       log(game, FUNNY.ajuda_externa(actor.name));
+      log(game, `💰 ${actor.name} agora tem ${actor.coins} moedas.`);
       break;
 
     case 'taxar':
       actor.coins += 3;
       log(game, FUNNY.taxar(actor.name));
+      log(game, `💰 ${actor.name} agora tem ${actor.coins} moedas.`);
       break;
 
     case 'roubar': {
@@ -109,6 +117,7 @@ function resolveActionEffect(game: GameState) {
       target.coins -= stolen;
       actor.coins += stolen;
       log(game, FUNNY.roubar(actor.name, target.name) + ` (${stolen} moeda${stolen !== 1 ? 's' : ''})`);
+      log(game, `💰 ${actor.name}: ${actor.coins} moedas | ${target.name}: ${target.coins} moedas.`);
       break;
     }
 
@@ -137,19 +146,28 @@ function resolveActionEffect(game: GameState) {
       return;
     }
 
-    case 'trocar_carta': {
+    case 'veredito': {
       const target = getPlayer(game, targetId!);
-      log(game, FUNNY.trocar_carta(actor.name, target.name));
-      pa.swapPlayerId = targetId!;
-      pa.swapContext = 'trocar_carta';
-      game.phase = 'CARD_SWAP_SELECT';
-      return;
+      const guess = pa.guessedCharacter!;
+      log(game, FUNNY.veredito(actor.name, target.name, CHARACTER_NAMES[guess]));
+      
+      const cardIdx = target.cards.findIndex(c => !c.dead && c.character === guess);
+      if (cardIdx !== -1) {
+        log(game, FUNNY.veredito_win(actor.name, target.name));
+        target.cards[cardIdx].dead = true;
+        log(game, FUNNY.lose_influence(target.name, CHARACTER_NAMES[guess]));
+        
+        if (checkGameOver(game)) return;
+      } else {
+        log(game, FUNNY.veredito_lose(actor.name));
+      }
+      break;
     }
   }
   advanceTurn(game);
 }
 
-export function handleAction(room: Room, actorId: string, actionType: string, targetId?: string) {
+export function handleAction(room: Room, actorId: string, actionType: string, targetId?: string, guessedChar?: string) {
   const game = room.game!;
   if (game.phase !== 'ACTION_SELECT') return { success: false, error: 'Fase incorreta' };
   if (game.currentPlayerId !== actorId) return { success: false, error: 'Não é sua vez' };
@@ -161,6 +179,8 @@ export function handleAction(room: Room, actorId: string, actionType: string, ta
   if (def.cost && actor.coins < def.cost) return { success: false, error: 'Moedas insuficientes' };
   if (actor.coins >= 10 && actionType !== 'golpe') return { success: false, error: 'Com 10+ moedas é obrigatório usar Golpe de Estado' };
   if (def.requiresTarget && !targetId) return { success: false, error: 'Escolha um alvo primeiro' };
+  if (actionType === 'veredito' && !guessedChar) return { success: false, error: 'Escolha um personagem para o veredito' };
+  
   if (targetId) {
     const t = getPlayer(game, targetId);
     if (!t || !t.cards.some(c => !c.dead)) return { success: false, error: 'Alvo inválido' };
@@ -171,6 +191,7 @@ export function handleAction(room: Room, actorId: string, actionType: string, ta
   game.pendingAction = {
     type: actionType, actorId, targetId: targetId || null,
     claimedCharacter: def.character || null,
+    guessedCharacter: guessedChar,
     blocker: null, respondedPlayers: [], loseInfluenceQueue: [],
   };
 
@@ -183,6 +204,46 @@ export function handleAction(room: Room, actorId: string, actionType: string, ta
   }
   game.phase = 'RESPONSE_WINDOW';
   return { success: true };
+}
+
+function resolveBlockFinal(game: GameState) {
+  const pa = game.pendingAction!;
+  if (pa.type === 'roubar') {
+    game.phase = 'GAMBLE_WAIT';
+  } else {
+    advanceTurn(game);
+  }
+}
+
+export function handleTossCoin(room: Room, playerId: string) {
+  const game = room.game!;
+  const pa = game.pendingAction;
+  if (!pa || game.phase !== 'GAMBLE_WAIT') return { success: false };
+  if (pa.blocker?.playerId !== playerId) return { success: false, error: 'Apenas quem bloqueou pode lançar a moeda' };
+
+  pa.gambleResult = Math.random() > 0.5 ? 'heads' : 'tails';
+  game.phase = 'GAMBLE_FLIPPING';
+  log(game, "🪙 A moeda está girando... O destino está sendo decidido!");
+  return { success: true };
+}
+
+export function resolveGambleFinal(room: Room) {
+  const game = room.game!;
+  const pa = game.pendingAction;
+  if (!pa || game.phase !== 'GAMBLE_FLIPPING') return;
+
+  const blocker = getPlayer(game, pa.blocker!.playerId);
+  const bicheiro = getPlayer(game, pa.actorId);
+
+  if (pa.gambleResult === 'heads') {
+    log(game, FUNNY.bicheiro_heads(blocker.name));
+    blocker.coins += 1;
+    bicheiro.coins -= 1;
+    advanceTurn(game);
+  } else {
+    log(game, FUNNY.bicheiro_tails(blocker.name));
+    resolveActionEffect(game);
+  }
 }
 
 export function handlePass(room: Room, playerId: string) {
@@ -198,7 +259,7 @@ export function handlePass(room: Room, playerId: string) {
 
   if (game.phase === 'BLOCK_CHALLENGE_WINDOW' && playerId === pa.actorId) {
     log(game, FUNNY.block_accepted(getPlayer(game, pa.actorId).name));
-    advanceTurn(game);
+    resolveBlockFinal(game);
     return { success: true };
   }
   return { success: true };
@@ -213,6 +274,15 @@ export function handleBlock(room: Room, blockerId: string, claimedCharacter: str
   if (!def.blockable) return { success: false, error: 'Ação não pode ser bloqueada' };
   if (!getBlockers(pa.type).includes(claimedCharacter)) return { success: false, error: 'Personagem não bloqueia isso' };
   if (!def.anyoneCanBlock && blockerId !== pa.targetId) return { success: false, error: 'Apenas o alvo pode bloquear' };
+
+  const blocker = getPlayer(game, blockerId);
+  if (pa.type === 'roubar' && blocker.coins < 1) return { success: false, error: 'Você precisa de 1 moeda para tentar bloquear o Bicheiro' };
+  
+  if (pa.type === 'roubar') {
+    blocker.coins -= 1;
+    const bicheiro = getPlayer(game, pa.actorId);
+    bicheiro.coins += 1; // Transfere a moeda pro bicheiro na hora
+  }
 
   pa.blocker = { playerId: blockerId, character: claimedCharacter };
   game.phase = 'BLOCK_CHALLENGE_WINDOW';
@@ -230,9 +300,6 @@ export function handleChallenge(room: Room, challengerId: string) {
   if (game.phase === 'RESPONSE_WINDOW') {
     if (!pa.claimedCharacter) return { success: false, error: 'Ação não pode ser desafiada' };
     if (challengerId === pa.actorId) return { success: false, error: 'Não pode se desafiar' };
-    const def = ACTION_DEFS[pa.type];
-    if (def.requiresTarget && pa.targetId && challengerId !== pa.targetId)
-      return { success: false, error: 'Só o alvo pode duvidar desta ação' };
 
     const actor = getPlayer(game, pa.actorId);
     const cardIdx = actor.cards.findIndex(c => !c.dead && c.character === pa.claimedCharacter);
@@ -267,7 +334,7 @@ export function handleChallenge(room: Room, challengerId: string) {
       game.deck.push(char); shuffle(game.deck);
       blocker.cards[cardIdx].character = game.deck.pop()!;
       pa.loseInfluenceQueue.push({ playerId: challengerId });
-      pa._afterLose = 'block_stands';
+      pa._afterLose = 'block_stands_final'; // Special case for gambling logic
       game.phase = 'LOSE_INFLUENCE';
     } else {
       log(game, FUNNY.block_challenge_success(challenger.name, blocker.name));
@@ -305,6 +372,7 @@ export function handleLoseInfluence(room: Room, playerId: string, cardIndex: num
   if (flag === 'continue_action')  resolveActionEffect(game);
   else if (flag === 'cancel_action')  advanceTurn(game);
   else if (flag === 'block_stands')   advanceTurn(game);
+  else if (flag === 'block_stands_final') resolveBlockFinal(game);
   else if (flag === 'action_proceeds') resolveActionEffect(game);
   else advanceTurn(game);
 

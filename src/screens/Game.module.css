@@ -114,7 +114,11 @@
 }
 
 .actionBtn {
-  @apply flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-black/20 hover:bg-white/5 transition-all disabled:opacity-20;
+  @apply flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-black/20 hover:bg-white/5 transition-all;
+}
+
+.actionBtn:disabled {
+  @apply opacity-20 grayscale brightness-50 cursor-not-allowed border-white/0;
 }
 
 .actionIcon {
@@ -173,10 +177,36 @@
 .confirmNo { @apply flex-1 bg-black/10 text-black py-2 rounded-lg font-bold text-xs uppercase; }
 
 .responseBox {
-  @apply bg-neutral-800 p-4 rounded-xl border border-white/5 flex flex-col gap-3;
+  @apply bg-neutral-800 p-4 rounded-xl border border-white/10 flex flex-col gap-3 shadow-2xl;
 }
 
 .responseTitle { @apply text-xs flex flex-col gap-1; }
+
+.accAnnouncement {
+  @apply bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-4 mb-4;
+}
+
+.accIcon { @apply text-3xl; }
+.accContent { @apply flex-1; }
+.accTitle { @apply text-[10px] font-black uppercase tracking-widest text-emerald-500; }
+.accText { @apply text-sm font-medium leading-relaxed; }
+
+.coinAnimation {
+  @apply flex flex-col items-center gap-6 py-8;
+}
+
+.flippingCoin {
+  @apply w-32 h-32 drop-shadow-[0_0_30px_rgba(255,214,0,0.8)];
+  filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+}
+
+.coinResult {
+  @apply animate-bounce flex flex-col items-center gap-2;
+}
+
+.coinSideLarge {
+  @apply w-24 h-24 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)];
+}
 
 .actionBtnDanger { @apply border-red-500/30 bg-red-500/10; }
 .actionBtnSuccess { @apply border-green-500/30 bg-green-500/10; }

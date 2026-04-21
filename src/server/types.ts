@@ -39,6 +39,8 @@ export interface PendingAction {
   loseInfluenceQueue: { playerId: string }[];
   swapPlayerId?: string;
   swapContext?: string;
+  guessedCharacter?: string;
+  gambleResult?: 'heads' | 'tails';
   x9Result?: { character: string; cardIndex: number };
   _afterLose?: string;
 }

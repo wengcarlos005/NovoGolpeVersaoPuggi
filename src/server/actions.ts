@@ -45,6 +45,9 @@ export const ACTION_DEFS: Record<string, ActionDef> = {
     character: 'investigador', challengeable: true, blockable: true,
     blockedBy: ['juiz'], requiresTarget: true, anyoneCanBlock: false,
   },
+  veredito: {
+    character: 'juiz', cost: 6, challengeable: true, blockable: false, requiresTarget: true,
+  },
 };
 
 export const ACTION_NAMES: Record<string, string> = {
@@ -57,6 +60,7 @@ export const ACTION_NAMES: Record<string, string> = {
   meter_x9:     'Meter o X9',
   disfarce:     'Disfarce',
   trocar_carta: 'Troca de Cartas',
+  veredito:     'Veredito',
 };
 
 export const CHARACTER_NAMES: Record<string, string> = {
