@@ -1,6 +1,6 @@
-import { shuffle } from './deck';
-import { ACTION_DEFS, ACTION_NAMES, CHARACTER_NAMES, getBlockers } from './actions';
-import { Room, GameState, Player, PendingAction } from './types';
+import { shuffle } from './deck.ts';
+import { ACTION_DEFS, ACTION_NAMES, CHARACTER_NAMES, getBlockers } from './actions.ts';
+import { Room, GameState, Player, PendingAction } from './types.ts';
 
 const FUNNY: Record<string, Function> = {
   renda:        (a: string)    => `${a} foi no trampo suado e ganhou 1 real 😤`,

@@ -1,4 +1,4 @@
-import { createDeck } from './deck';
+import { createDeck } from './deck.ts';
 import { Room, GameState } from './types.ts';
 
 export const rooms: Record<string, Room> = {};
