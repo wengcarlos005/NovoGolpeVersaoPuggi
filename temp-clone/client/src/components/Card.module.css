@@ -1,0 +1,80 @@
+.card {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: default;
+  flex-shrink: 0;
+  position: relative;
+  aspect-ratio: 4 / 5;
+}
+
+/* Sizes */
+.sm  { width: 72px; }
+.md  { width: 104px; }
+.lg  { width: 140px; }
+.xl  { width: 170px; }
+
+/* Image card — no overlay, SVG already has labels */
+.cardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+
+/* Fallback when no image */
+.cardFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.fallbackIcon { font-size: 2.4rem; }
+.fallbackName {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem;
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+/* Selected */
+.selected { border-color: var(--yellow) !important; }
+
+/* Dead */
+.dead {
+  background: #1a1a1a;
+  border: 2px solid #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.deadIcon  { font-size: 1.2rem; color: var(--red); }
+.deadChar  { font-size: 0.68rem; color: #555; text-align: center; font-weight: 600; }
+
+/* Hidden */
+.hidden { cursor: pointer; }
+.hiddenBack {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #1a237e 0%, #0d1b5e 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+.hiddenIcon { font-size: 2rem; }
+.hiddenLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  color: var(--yellow);
+  letter-spacing: 0.15em;
+}

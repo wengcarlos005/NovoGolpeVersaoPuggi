@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+.overlay {
+  @apply fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6;
+}
+
+.modal {
+  @apply w-full max-w-sm bg-neutral-900 border border-white/5 rounded-3xl p-6 shadow-2xl;
+}
+
+.header {
+  @apply flex items-center gap-4 mb-6;
+}
+
+.contextIcon {
+  @apply w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-2xl;
+}
+
+.title {
+  @apply text-lg font-bold text-white tracking-tight;
+}
+
+.desc {
+  @apply text-xs text-white/40 font-medium;
+}
+
+.cards {
+  @apply flex justify-center gap-4 mb-8;
+}
+
+.card {
+  @apply relative w-32 aspect-[3/4.2] rounded-xl overflow-hidden bg-neutral-800 border border-white/10 cursor-pointer transition-all;
+}
+
+.cardSelected {
+  @apply border-yellow-500 ring-2 ring-yellow-500 bg-neutral-700 shadow-[0_0_20px_rgba(234,179,8,0.2)];
+}
+
+.cardImg {
+  @apply w-full h-full object-cover;
+}
+
+.cardIcon {
+  @apply absolute inset-0 flex items-center justify-center text-4xl opacity-20;
+}
+
+.cardFooter {
+  @apply absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent pt-4;
+}
+
+.cardName {
+  @apply block text-center text-[10px] font-black uppercase tracking-widest text-white;
+}
+
+.confirmBtn {
+  @apply w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest bg-yellow-500 text-black shadow-lg hover:bg-yellow-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed;
+}
+
+.confirmDanger {
+  @apply bg-red-600 text-white hover:bg-red-500 shadow-red-900/20;
+}

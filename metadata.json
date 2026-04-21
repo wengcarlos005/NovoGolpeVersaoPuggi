@@ -1,0 +1,6 @@
+{
+  "name": "GOLPE - Coup Clone",
+  "description": "Um clone brasileiro do famoso jogo de tabuleiro Coup (Blefe. Poder. Traição.). Jogue de 2 a 6 jogadores com suporte a tempo real e modo espectador.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
