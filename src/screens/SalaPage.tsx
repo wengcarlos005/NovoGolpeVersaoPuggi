@@ -49,7 +49,7 @@ export default function SalaPage({
   }
 
   if (gameData) {
-    return <Game data={gameData} myId={myPlayerId || socket.id} />;
+    return <Game data={gameData} myId={myPlayerId || socket.id} onQuit={onLeave} />;
   }
 
   if (roomData && roomData.code === code) {

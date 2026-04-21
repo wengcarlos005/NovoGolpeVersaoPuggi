@@ -64,8 +64,8 @@ export const CHARACTER_NAMES: Record<string, string> = {
   empresario:    'Bicheiro',
   investigador:  'X9',
   juiz:          'Juiz',
-  assassino:     'Miliciano',
-  guarda_costas: 'Segurança',
+  assassino:     'Bandido',
+  guarda_costas: 'Miliciano',
 };
 
 export function getBlockers(actionType: string) {

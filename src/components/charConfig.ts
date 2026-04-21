@@ -11,5 +11,5 @@ export const CHAR_CONFIG: Record<string, any> = {
   investigador:  { label: 'X9',        color: '#6a1b9a', icon: '🕵️', desc: 'Espia · Disfarça · Força troca', img: x9Img        },
   juiz:          { label: 'Juiz',      color: '#1b5e20', icon: '⚖️', desc: 'Bloqueia Bicheiro e X9',         img: juizImg      },
   assassino:     { label: 'Bandido',   color: '#b71c1c', icon: '🔫', desc: 'Elimina carta (3 moedas)',        img: bandidoImg   },
-  guarda_costas: { label: 'Segurança', color: '#4e342e', icon: '🛡️', desc: 'Bloqueia Miliciano e Bicheiro',  img: milicianoImg },
+  guarda_costas: { label: 'Miliciano', color: '#4e342e', icon: '🛡️', desc: 'Bloqueia Bandido e Bicheiro',     img: milicianoImg },
 };

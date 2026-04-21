@@ -75,7 +75,12 @@ export default function CardSelectorModal({ title, description, cards, confirmLa
           whileTap={{ scale: 0.96 }}
         >
           {selected !== null
-            ? `${confirmLabel}: ${CHAR_CONFIG[aliveCards.find(c => c.index === selected)?.character]?.label}`
+            ? (() => {
+                const selectedCard = aliveCards.find(c => c.index === selected);
+                const charKey = selectedCard?.character || '';
+                const label = CHAR_CONFIG[charKey]?.label || charKey || 'Desconhecido';
+                return `${confirmLabel}: ${label}`;
+              })()
             : 'Selecione uma carta acima'}
         </motion.button>
       </motion.div>

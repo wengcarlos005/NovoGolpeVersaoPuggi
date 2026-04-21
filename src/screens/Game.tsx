@@ -11,6 +11,7 @@ import { sfx } from '../sounds/sfx';
 import moedaImg from '../assets/moeda.svg';
 import mesaImg  from '../assets/mesa.svg';
 import styles from './Game.module.css';
+import { X, LogOut, RotateCcw, Info } from 'lucide-react';
 
 const ACTION_NAMES: Record<string, string> = {
   renda:'Trampo Suado', ajuda_externa:'Imposto é Roubo', golpe:'Golpe de Estado',
@@ -63,7 +64,7 @@ const ACTION_CATEGORIES = [
   },
 ];
 
-export default function Game({ data, myId }: { data: any, myId: string }) {
+export default function Game({ data, myId, onQuit }: { data: any, myId: string, onQuit: () => void }) {
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<any>(null);
   const [blockChar,      setBlockChar]      = useState<string | null>(null);
@@ -72,6 +73,7 @@ export default function Game({ data, myId }: { data: any, myId: string }) {
 
   const game = data?.game;
   const { players = [], currentPlayerId, phase, pendingAction: pa, log = [], winner } = game || {};
+  const isHost = data?.hostId === myId;
 
   useSoundEffects(game, myId);
 
@@ -95,6 +97,20 @@ export default function Game({ data, myId }: { data: any, myId: string }) {
       cb?.();
     });
   }
+
+  const handleQuit = () => {
+    if (confirm('Deseja realmente sair da sala? Suas cartas serão perdidas.')) {
+      emit('leave_room', {}, () => {
+        onQuit();
+      });
+    }
+  };
+
+  const handleRestart = () => {
+    if (confirm('Deseja reiniciar a partida? Todo o progresso atual será perdido.')) {
+      emit('restart_game', {});
+    }
+  };
 
   const stageAction = (action: string, charKey: string | null) => {
     if (TARGET_ACTIONS.includes(action) && !selectedTarget)
@@ -151,10 +167,15 @@ export default function Game({ data, myId }: { data: any, myId: string }) {
           transition={{ type:'spring', stiffness:200, damping:18 }}>
           <h1>FIM DE JOGO</h1>
           <p className={styles.winnerName}>{w?.name} venceu o Golpe! 🇧🇷</p>
-          <motion.button className="btn-primary w-full" whileTap={{ scale:0.95 }}
-            onClick={() => socket.emit('restart_game', {})}>
-            Jogar Novamente
-          </motion.button>
+          <div className="flex flex-col gap-2 w-full">
+            <motion.button className="btn-primary" whileTap={{ scale:0.95 }}
+              onClick={() => socket.emit('restart_game', {})}>
+              Jogar Novamente
+            </motion.button>
+            <button className="text-white/40 text-xs hover:text-white transition-colors" onClick={onQuit}>
+               Sair para o Menu
+            </button>
+          </div>
         </motion.div>
       </motion.div>
     );
@@ -188,6 +209,18 @@ export default function Game({ data, myId }: { data: any, myId: string }) {
         <TurnCard player={players.find((p: any)=>p.id===currentPlayerId)} isMe={isMyTurn} />
         <p className={styles.panelLabel}>Chat da Rodada</p>
         <GameLog log={log} />
+        
+        {/* Session Actions */}
+        <div className="mt-auto pt-4 border-t border-white/5 flex flex-col gap-2">
+           {isHost && (
+             <button onClick={handleRestart} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-yellow-500 transition-colors">
+               <RotateCcw size={14} /> Reiniciar Partida
+             </button>
+           )}
+           <button onClick={handleQuit} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-red-500 transition-colors">
+             <LogOut size={14} /> Sair da Sala
+           </button>
+        </div>
       </div>
 
       <div className={styles.center}>
@@ -345,21 +378,45 @@ export default function Game({ data, myId }: { data: any, myId: string }) {
         </div>
       </div>
 
-      {showHelp&&(
-        <div className={styles.helpOverlay} onClick={()=>setShowHelp(false)}>
-          <div className={styles.helpModal} onClick={e=>e.stopPropagation()}>
-            <h2 className="text-xl mb-4">Personagens</h2>
-            {Object.entries(CHAR_CONFIG).map(([key,cfg])=>(
-              <div key={key} className="flex items-center gap-2 mb-2 text-sm">
-                <span>{cfg.icon}</span><strong>{cfg.label}</strong><span>{cfg.desc}</span>
+      <AnimatePresence>
+        {showHelp&&(
+          <motion.div className={styles.helpOverlay} 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={()=>setShowHelp(false)}>
+            <motion.div className={styles.helpModal} 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-[Bebas_Neue] tracking-wide">Guia de Personagens</h2>
+                <button onClick={() => setShowHelp(false)} className="text-white/20 hover:text-white transition-colors">
+                  <X />
+                </button>
               </div>
-            ))}
-            <button className="btn-primary w-full mt-4" onClick={()=>setShowHelp(false)}>Fechar</button>
-          </div>
-        </div>
-      )}
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                {Object.entries(CHAR_CONFIG).map(([key,cfg])=>(
+                  <div key={key} className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center gap-4">
+                    <div className="w-12 h-16 rounded-lg overflow-hidden bg-neutral-800 flex-shrink-0">
+                       {cfg.img ? <img src={cfg.img} className="w-full h-full object-cover" /> : <span className="flex items-center justify-center h-full text-2xl">{cfg.icon}</span>}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{cfg.icon}</span>
+                        <strong className="text-white uppercase tracking-wider">{cfg.label}</strong>
+                      </div>
+                      <p className="text-xs text-white/50 mt-1">{cfg.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="btn-primary w-full mt-8" onClick={()=>setShowHelp(false)}>Entendi</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <button className={styles.helpBtn} onClick={()=>setShowHelp(!showHelp)}>?</button>
+      <button className={styles.helpBtn} onClick={()=>setShowHelp(!showHelp)}>
+        <Info size={18} />
+      </button>
     </div>
   );
 }

@@ -53,8 +53,23 @@ function checkGameOver(game: GameState) {
 function advanceTurn(game: GameState) {
   if (checkGameOver(game)) return;
   const alive = getAlivePlayers(game);
-  const idx = alive.findIndex(p => p.id === game.currentPlayerId);
-  const next = alive[(idx + 1) % alive.length];
+  
+  // If the current player is no longer in the alive list (eliminated just now),
+  // finding their index will return -1.
+  // We want to find the next player starting from the current player id.
+  
+  const allPlayers = game.players;
+  let currIdxInAll = allPlayers.findIndex(p => p.id === game.currentPlayerId);
+  
+  // Look for the next player who is alive
+  let nextIdx = (currIdxInAll + 1) % allPlayers.length;
+  while (!allPlayers[nextIdx].cards.some(c => !c.dead)) {
+    nextIdx = (nextIdx + 1) % allPlayers.length;
+    // Safety break, though checkGameOver should prevent infinity
+    if (nextIdx === currIdxInAll) break;
+  }
+  
+  const next = allPlayers[nextIdx];
   game.currentPlayerId = next.id;
   game.phase = 'ACTION_SELECT';
   game.pendingAction = null;
