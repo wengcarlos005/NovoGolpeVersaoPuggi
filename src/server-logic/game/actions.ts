@@ -1,16 +1,4 @@
-export interface ActionDef {
-  basic?: boolean;
-  challengeable: boolean;
-  blockable: boolean;
-  requiresTarget: boolean;
-  cost?: number;
-  character?: string;
-  blockedBy?: string[];
-  anyoneCanBlock?: boolean;
-  targetLosesInfluence?: boolean;
-}
-
-export const ACTION_DEFS: Record<string, ActionDef> = {
+export const ACTION_DEFS: Record<string, any> = {
   renda: {
     basic: true, challengeable: false, blockable: false, requiresTarget: false,
   },
@@ -28,11 +16,18 @@ export const ACTION_DEFS: Record<string, ActionDef> = {
   roubar: {
     character: 'empresario', challengeable: true, blockable: true,
     blockedBy: ['juiz', 'guarda_costas'], requiresTarget: true, anyoneCanBlock: false,
+    coinFlipBlock: true, // bloqueio custa 1 moeda e tem cara ou coroa
   },
   assassinar: {
     character: 'assassino', cost: 3, challengeable: true, blockable: true,
     blockedBy: ['guarda_costas'], requiresTarget: true, targetLosesInfluence: true, anyoneCanBlock: false,
   },
+  // ── Juiz offensive ─────────────────────────────────────────────────────────
+  veredito: {
+    character: 'juiz', cost: 5, challengeable: true, blockable: false,
+    requiresTarget: true, anyoneCanBlock: false, anyoneCanChallenge: true,
+  },
+  // ── X9 trio ─────────────────────────────────────────────
   meter_x9: {
     character: 'investigador', challengeable: true, blockable: true,
     blockedBy: ['juiz'], requiresTarget: true, anyoneCanBlock: false,
@@ -45,9 +40,6 @@ export const ACTION_DEFS: Record<string, ActionDef> = {
     character: 'investigador', challengeable: true, blockable: true,
     blockedBy: ['juiz'], requiresTarget: true, anyoneCanBlock: false,
   },
-  veredito: {
-    character: 'juiz', cost: 6, challengeable: true, blockable: false, requiresTarget: true,
-  },
 };
 
 export const ACTION_NAMES: Record<string, string> = {
@@ -57,10 +49,10 @@ export const ACTION_NAMES: Record<string, string> = {
   taxar:        'Faz o L',
   roubar:       'Pegar o Arrego',
   assassinar:   'Mandar pro Vasco',
+  veredito:     'Veredito',
   meter_x9:     'Meter o X9',
   disfarce:     'Disfarce',
   trocar_carta: 'Troca de Cartas',
-  veredito:     'Veredito',
 };
 
 export const CHARACTER_NAMES: Record<string, string> = {
